@@ -49,12 +49,11 @@ void cxa_tiC2K_gpio_init_input(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t pi
 	// initialize our super class
 	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
 
+	GPIO_setMasterCore(pinIn, coreIn);
     GPIO_setPinConfig(pinConfigIn);
-    GPIO_setMasterCore(pinIn, coreIn);
+    // set our initial direction
+    cxa_gpio_setDirection(&gpioIn->super, CXA_GPIO_DIR_INPUT);
     GPIO_setPadConfig(pinIn, pinTypeIn);
-
-	// set our initial direction
-	cxa_gpio_setDirection(&gpioIn->super, CXA_GPIO_DIR_INPUT);
 }
 
 

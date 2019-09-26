@@ -4,12 +4,11 @@
  *
  * @author Christopher Armenio
  */
-#include <cxa_timeBase.h>
+#include "cxa_reboot.h"
 
 
 // ******** includes ********
-#include <Externals.h>
-#include <cxa_assert.h>
+#include "esp_system.h"
 
 
 // ******** local macro definitions ********
@@ -25,20 +24,9 @@
 
 
 // ******** global function implementations ********
-void cxa_tiC2K_timeBase_init(void)
+void cxa_reboot(void)
 {
-}
-
-
-uint32_t cxa_timeBase_getCount_us(void)
-{
-    return cpuTimer1IntCount*1000; // cpuTimer1IntCount is in ms, multiply by 1000 to get microsecond units.
-}
-
-
-uint32_t cxa_timeBase_getMaxCount_us(void)
-{
-	return UINT32_MAX;
+	esp_restart();
 }
 
 

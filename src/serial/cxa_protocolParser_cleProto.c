@@ -380,5 +380,6 @@ static void rxState_cb_error_enter(cxa_stateMachine_t *const smIn, int prevState
 	cxa_protocolParser_cleProto_t* clePpIn = (cxa_protocolParser_cleProto_t*)userVarIn;
 	cxa_assert(clePpIn);
 
+	cxa_logger_stepDebug();
 	cxa_protocolParser_notify_ioException(&clePpIn->super);
 }

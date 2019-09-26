@@ -33,8 +33,7 @@
 
 
 // ******** local function prototypes ********
-static void init(void);
-//extern void AT25LoadMAC(void);
+//static void init(void);
 
 // ********  local variable declarations *********
 //static bool isInit = false;
@@ -44,10 +43,11 @@ static void init(void);
 
 
 // ******** global function implementations ********
-//bool cxa_esp32_nvsManager_init(void)
-//{
+bool cxa_tiC2K_nvsManager_init(void)
+{
 //	return (nvs_flash_init() == ESP_OK);
-//}
+    return 1; // Using external flash.  No TI equvialent.
+}
 
 
 //bool cxa_nvsManager_doesKeyExist(const char *const keyIn)
@@ -109,28 +109,6 @@ static void init(void);
 
 bool cxa_nvsManager_get_uint8(const char *const keyIn, uint8_t *const valueOut)
 {
-//    if( !isInit ) init();
-//
-//    esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
-//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
-//    return (retVal == ESP_OK);
-    return 0;
-}
-
-
-bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
-{
-//    if( !isInit ) init();
-//
-//    esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
-//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
-//    return (retVal == ESP_OK);
-    return 0;
-}
-
-
-bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
-{
     if (cxa_stringUtils_equals(keyIn, "nmdLcl_id"))
     {
         AT25LoadMac(); // Could move this out of if's, but other keys may require other functions.
@@ -143,22 +121,10 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
         *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx1_id);
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_mac"))
-    {
-        AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx1_mac);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-    }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_id"))
     {
         AT25LoadMac();
         *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx2_id);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-    }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_mac"))
-    {
-        AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx2_mac);
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_id"))
@@ -167,34 +133,129 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
         *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx3_id);
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_mac"))
-    {
-        AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx3_mac);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-    }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_id"))
     {
         AT25LoadMac();
         *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx4_id);
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
+    else
+    {
+        // TODO: Log Error.  Unexpected keyIn.
+    }
+//    if( !isInit ) init();
+//
+//    esp_err_t retVal = nvs_get_u8(handle, keyIn, valueOut);
+//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "get error: %d", retVal);
+//    return (retVal == ESP_OK);
+    return 0; //TODO: Need TIC2K Implementation
+}
+
+
+bool cxa_nvsManager_set_uint8(const char *const keyIn, uint8_t valueIn)
+{
+    if (cxa_stringUtils_equals(keyIn, "nmdLcl_id"))
+    {
+        gSysMac.mU.mac.nmdLcl_id = ((UINT16) valueIn);
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+    }
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_id"))
+    {
+        gSysMac.mU.mac.nmdPrx1_id = ((UINT16) valueIn);
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+    }
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_id"))
+    {
+        gSysMac.mU.mac.nmdPrx2_id = ((UINT16) valueIn);
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+    }
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_id"))
+    {
+        gSysMac.mU.mac.nmdPrx3_id = ((UINT16) valueIn);
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+    }
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_id"))
+    {
+        gSysMac.mU.mac.nmdPrx4_id = ((UINT16) valueIn);
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+    }
+    else
+    {
+        // TODO: Log Error.  Unexpected keyIn.
+    }
+
+//    if( !isInit ) init();
+//
+//    esp_err_t retVal = nvs_set_u8(handle, keyIn, valueIn);
+//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "set error: %d", retVal);
+//    return (retVal == ESP_OK);
+    return 0; //TODO: Need TIC2K Implementation
+}
+
+
+bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, size_t maxOutputSize_bytesIn, size_t *const actualOutputSize_bytesOut)
+{
+    //TODO: Set actualOutputSize_bytesOut
+    if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_mac"))
+    {
+        AT25LoadMac();
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.nmdPrx1_mac[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.nmdPrx1_mac[1]);  // Advance referenced address by 1 byte
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.nmdPrx1_mac[2]);  // Advance referenced address by 2 bytes
+        *actualOutputSize_bytesOut = 6;
+
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+    }
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_mac"))
+    {
+        AT25LoadMac();
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.nmdPrx2_mac[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.nmdPrx2_mac[1]);
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.nmdPrx2_mac[2]);
+        *actualOutputSize_bytesOut = 6;
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+    }
+
+    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_mac"))
+    {
+        AT25LoadMac();
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.nmdPrx3_mac[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.nmdPrx3_mac[1]);
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.nmdPrx3_mac[2]);
+        *actualOutputSize_bytesOut = 6;
+        // TODO: Check for expected length/value.  Send logger error if unexpected.
+    }
+
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_mac"))
     {
         AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.nmdPrx4_mac);
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.nmdPrx4_mac[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.nmdPrx4_mac[1]);
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.nmdPrx4_mac[2]);
+        *actualOutputSize_bytesOut = 6;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[0]"))
     {
         AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.footSnsMac0);
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.footSnsMac0[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.footSnsMac0[1]);
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.footSnsMac0[2]);
+        *actualOutputSize_bytesOut = 6;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[1]"))
     {
         AT25LoadMac();
-        *valueOut = ((uint8_t) gSysMac.mU.mac.footSnsMac1);
+        (*valueOut)         = ((UINT16) gSysMac.mU.mac.footSnsMac1[0]);
+        (*(valueOut + 1))  = ((UINT16) gSysMac.mU.mac.footSnsMac1[1]);
+        (*(valueOut + 2))  = ((UINT16) gSysMac.mU.mac.footSnsMac1[2]);
+        *actualOutputSize_bytesOut = 6;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
     }
     else
@@ -221,69 +282,53 @@ bool cxa_nvsManager_get_blob(const char *const keyIn, uint8_t *const valueOut, s
 
 bool cxa_nvsManager_set_blob(const char *const keyIn, uint8_t *const valueIn, size_t blobSize_bytesIn)
 {
-    if (cxa_stringUtils_equals(keyIn, "nmdLcl_id"))
+    if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_mac"))
     {
-        gSysMac.mU.mac.nmdLcl_id = ((UINT16) *valueIn);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
-    }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_id"))
-    {
-        gSysMac.mU.mac.nmdPrx1_id = ((UINT16) *valueIn);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
-    }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_mac"))
-    {
-        gSysMac.mU.mac.nmdPrx1_mac = ((UINT16) *valueIn);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
-    }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_id"))
-    {
-        gSysMac.mU.mac.nmdPrx2_id = ((UINT16) *valueIn);
+        gSysMac.mU.mac.nmdPrx1_mac[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.nmdPrx1_mac[1] = ((UINT16) (*(valueIn + 1))); // Advance referenced address by 1 byte
+        gSysMac.mU.mac.nmdPrx1_mac[2] = ((UINT16) (*(valueIn + 2))); // Advance referenced address by 2 bytes
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx2_mac = ((UINT16) *valueIn);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
-    }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_id"))
-    {
-        gSysMac.mU.mac.nmdPrx3_id = ((UINT16) *valueIn);
+        gSysMac.mU.mac.nmdPrx2_mac[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.nmdPrx2_mac[1] = ((UINT16) (*(valueIn + 1)));
+        gSysMac.mU.mac.nmdPrx2_mac[2] = ((UINT16) (*(valueIn + 2)));
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx3_mac = ((UINT16) *valueIn);
+        gSysMac.mU.mac.nmdPrx3_mac[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.nmdPrx3_mac[1] = ((UINT16) (*(valueIn + 1)));
+        gSysMac.mU.mac.nmdPrx3_mac[2] = ((UINT16) (*(valueIn + 2)));
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
-    else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_id"))
-    {
-        gSysMac.mU.mac.nmdPrx4_id = ((UINT16) *valueIn);
-        // TODO: Check for expected length/value.  Send logger error if unexpected.
-        AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
-    }
+
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx4_mac = ((UINT16) *valueIn);
+        gSysMac.mU.mac.nmdPrx4_mac[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.nmdPrx4_mac[1] = ((UINT16) (*(valueIn + 1)));
+        gSysMac.mU.mac.nmdPrx4_mac[2] = ((UINT16) (*(valueIn + 2)));
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[0]"))
     {
-        gSysMac.mU.mac.footSnsMac0 = ((UINT16) *valueIn);
+        gSysMac.mU.mac.footSnsMac0[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.footSnsMac0[1] = ((UINT16) (*(valueIn + 1)));
+        gSysMac.mU.mac.footSnsMac0[2] = ((UINT16) (*(valueIn + 2)));
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[1]"))
     {
-        gSysMac.mU.mac.footSnsMac1 = ((UINT16) *valueIn);
+        gSysMac.mU.mac.footSnsMac1[0] = ((UINT16) (*valueIn));
+        gSysMac.mU.mac.footSnsMac1[1] = ((UINT16) (*(valueIn + 1)));
+        gSysMac.mU.mac.footSnsMac1[2] = ((UINT16) (*(valueIn + 2)));
+
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
@@ -319,7 +364,9 @@ bool cxa_nvsManager_erase(const char *const keyIn)
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[1]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx1_mac = erasedValue;
+        gSysMac.mU.mac.nmdPrx1_mac[0] = erasedValue;
+        gSysMac.mU.mac.nmdPrx1_mac[1] = erasedValue;
+        gSysMac.mU.mac.nmdPrx1_mac[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
@@ -331,7 +378,9 @@ bool cxa_nvsManager_erase(const char *const keyIn)
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[2]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx2_mac = erasedValue;
+        gSysMac.mU.mac.nmdPrx2_mac[0] = erasedValue;
+        gSysMac.mU.mac.nmdPrx2_mac[1] = erasedValue;
+        gSysMac.mU.mac.nmdPrx2_mac[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
@@ -343,7 +392,9 @@ bool cxa_nvsManager_erase(const char *const keyIn)
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[3]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx3_mac = erasedValue;
+        gSysMac.mU.mac.nmdPrx3_mac[0] = erasedValue;
+        gSysMac.mU.mac.nmdPrx3_mac[1] = erasedValue;
+        gSysMac.mU.mac.nmdPrx3_mac[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
@@ -355,19 +406,25 @@ bool cxa_nvsManager_erase(const char *const keyIn)
     }
     else if (cxa_stringUtils_equals(keyIn, "nmdPrx[4]_mac"))
     {
-        gSysMac.mU.mac.nmdPrx4_mac = erasedValue;
+        gSysMac.mU.mac.nmdPrx4_mac[0] = erasedValue;
+        gSysMac.mU.mac.nmdPrx4_mac[1] = erasedValue;
+        gSysMac.mU.mac.nmdPrx4_mac[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[0]"))
     {
-        gSysMac.mU.mac.footSnsMac0 = erasedValue;
+        gSysMac.mU.mac.footSnsMac0[0] = erasedValue;
+        gSysMac.mU.mac.footSnsMac0[1] = erasedValue;
+        gSysMac.mU.mac.footSnsMac0[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
     else if (cxa_stringUtils_equals(keyIn, "footSnsMac[1]"))
     {
-        gSysMac.mU.mac.footSnsMac1 = erasedValue;
+        gSysMac.mU.mac.footSnsMac1[0] = erasedValue;
+        gSysMac.mU.mac.footSnsMac1[1] = erasedValue;
+        gSysMac.mU.mac.footSnsMac1[2] = erasedValue;
         // TODO: Check for expected length/value.  Send logger error if unexpected.
         AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
     }
@@ -380,6 +437,44 @@ bool cxa_nvsManager_erase(const char *const keyIn)
 //	esp_err_t retVal = nvs_erase_key(handle, keyIn);
 //	if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
 //	return (retVal == ESP_OK);
+    return 0;
+}
+
+bool cxa_nvsManager_eraseAll(void)
+{
+    UINT16 erasedValue = 0; // Should zero, or something else, be used?
+
+    gSysMac.mU.mac.nmdLcl_id    = erasedValue;
+    gSysMac.mU.mac.nmdPrx1_id   = erasedValue;
+    gSysMac.mU.mac.nmdPrx1_mac[0] = erasedValue;
+    gSysMac.mU.mac.nmdPrx1_mac[1] = erasedValue;
+    gSysMac.mU.mac.nmdPrx1_mac[2] = erasedValue;
+    gSysMac.mU.mac.nmdPrx2_id   = erasedValue;
+    gSysMac.mU.mac.nmdPrx2_mac[0] = erasedValue;
+    gSysMac.mU.mac.nmdPrx2_mac[1] = erasedValue;
+    gSysMac.mU.mac.nmdPrx2_mac[2] = erasedValue;
+    gSysMac.mU.mac.nmdPrx3_id   = erasedValue;
+    gSysMac.mU.mac.nmdPrx3_mac[0] = erasedValue;
+    gSysMac.mU.mac.nmdPrx3_mac[1] = erasedValue;
+    gSysMac.mU.mac.nmdPrx3_mac[2] = erasedValue;
+    gSysMac.mU.mac.nmdPrx4_id   = erasedValue;
+    gSysMac.mU.mac.nmdPrx4_mac[0] = erasedValue;
+    gSysMac.mU.mac.nmdPrx4_mac[1] = erasedValue;
+    gSysMac.mU.mac.nmdPrx4_mac[2] = erasedValue;
+    gSysMac.mU.mac.footSnsMac0[0] = erasedValue;
+    gSysMac.mU.mac.footSnsMac0[1] = erasedValue;
+    gSysMac.mU.mac.footSnsMac0[2] = erasedValue;
+    gSysMac.mU.mac.footSnsMac1[0] = erasedValue;
+    gSysMac.mU.mac.footSnsMac1[1] = erasedValue;
+    gSysMac.mU.mac.footSnsMac1[2] = erasedValue;
+    // TODO: Check for expected length/value.  Send logger error if unexpected.
+    AT25StoreMac(); // Could move this out of if's, but other keys may require other functions.
+
+//    if( !isInit ) init();
+//
+//    esp_err_t retVal = nvs_erase_all(handle);
+//    if( retVal != ESP_OK ) cxa_logger_warn(&logger, "erase error: %d", retVal);
+//    return (retVal == ESP_OK);
     return 0;
 }
 

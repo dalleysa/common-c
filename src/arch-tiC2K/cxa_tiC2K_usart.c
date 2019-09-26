@@ -12,6 +12,7 @@
 #include <cxa_assert.h>
 #include <cxa_delay.h>
 #include <cxa_numberUtils.h>
+#include <cxa_runLoop.h>
 
 #include <cxa_tiC2K_gpio.h>
 #include "Externals.h"
@@ -34,8 +35,10 @@ static bool ioStream_cb_writeBytes_SCIA(void* buffIn, size_t bufferSize_bytesIn,
 static cxa_ioStream_readStatus_t ioStream_cb_readByte_SCIB(uint8_t *const byteOut, void *const userVarIn);
 static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn);
 
-__interrupt void sciaTxISR(void);
-__interrupt void sciaRxISR(void);
+static void runLoopCb_fifoStatusPrint(void* userVarIn);
+
+//__interrupt void scibTxISR(void);
+//__interrupt void scibRxISR(void);
 // ********  local variable declarations *********
 
 
@@ -65,7 +68,7 @@ void cxa_tiC2K_usart_init_noHH(cxa_tiC2K_usart_t *const usartIn, const uint32_t 
 //    Interrupt_initVectorTable();
 
     SCI_performSoftwareReset(SCIA_BASE); // SCI_XBASE could be an argument, but SCIA_BASE (only other option) is used for Bluetooth
-//    DEVICE_DELAY_US(10000);
+    DEVICE_DELAY_US(10000);
     SCI_setConfig(SCIA_BASE, DEVICE_LSPCLK_FREQ, baudRate_bpsIn, (SCI_CONFIG_WLEN_8 |
                                                                   SCI_CONFIG_STOP_ONE |
                                                                   SCI_CONFIG_PAR_NONE));
@@ -76,19 +79,6 @@ void cxa_tiC2K_usart_init_noHH(cxa_tiC2K_usart_t *const usartIn, const uint32_t 
     SCI_enableFIFO(SCIA_BASE);
     SCI_enableModule(SCIA_BASE);
     SCI_performSoftwareReset(SCIA_BASE);
-
-    /* SAD:  The code below is from BLEIO.c, and can be used as a template if interrupts are needed. In that case
-     * TI's examples (C:\ti\c2000\C2000Ware_2_00_00_02\driverlib\f28004x\examples\sci) should also be referenced */
-//    SCI_setFIFOInterruptLevel(SCIA_BASE, SCI_FIFO_TX0, SCI_FIFO_RX1);
-//    SCI_enableInterrupt(SCIA_BASE, SCI_INT_RXFF);
-//
-//    // Enable the interrupts in the PIE: Group 10 interrupts 1 & 2.
-//    //
-//    Interrupt_register(INT_SCIA_TX, &sciaTxISR);
-//    Interrupt_register(INT_SCIA_RX, &sciaRxISR);
-//    Interrupt_enable(INT_SCIA_RX);
-//    Interrupt_enable(INT_SCIA_TX);
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP10);
 
 	// setup our ioStream (last once everything is setup)
 	cxa_ioStream_init(&usartIn->super.ioStream);
@@ -113,7 +103,7 @@ void cxa_tiC2K_usart_init_HH_BT(cxa_tiC2K_usart_t *const usartIn, const uint32_t
 
     // Setup RX_BTTx Pin
     cxa_tiC2K_gpio_t usartRxGpio;
-    cxa_tiC2K_gpio_init_input(&usartRxGpio, rxPinConfigIn, rxPinIn, GPIO_CORE_CPU1, GPIO_PIN_TYPE_PULLUP, CXA_GPIO_POLARITY_NONINVERTED); //Customized for BT implementation
+    cxa_tiC2K_gpio_init_input(&usartRxGpio, rxPinConfigIn, rxPinIn, GPIO_CORE_CPU1, GPIO_PIN_TYPE_STD, CXA_GPIO_POLARITY_NONINVERTED); //Customized for BT implementation
     GPIO_setQualificationMode(rxPinIn, GPIO_QUAL_ASYNC);
 
     // Setup CTS_BTRTS Pin
@@ -150,22 +140,16 @@ void cxa_tiC2K_usart_init_HH_BT(cxa_tiC2K_usart_t *const usartIn, const uint32_t
     SCI_enableModule(SCIB_BASE);
     SCI_performSoftwareReset(SCIB_BASE);
 
-    /* SAD:  The code below is from BLEIO.c, and can be used as a template if interrupts are needed. In that case
-     * TI's examples (C:\ti\c2000\C2000Ware_2_00_00_02\driverlib\f28004x\examples\sci) should also be referenced */
-//    SCI_setFIFOInterruptLevel(SCIA_BASE, SCI_FIFO_TX0, SCI_FIFO_RX1);
-//    SCI_enableInterrupt(SCIA_BASE, SCI_INT_RXFF);
-//
-//    // Enable the interrupts in the PIE: Group 10 interrupts 1 & 2.
-//    //
-//    Interrupt_register(INT_SCIA_TX, &sciaTxISR);
-//    Interrupt_register(INT_SCIA_RX, &sciaRxISR);
-//    Interrupt_enable(INT_SCIA_RX);
-//    Interrupt_enable(INT_SCIA_TX);
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP10);
+    // Reset the BGM121
+    GPIO_writePin(11U, 0); // 0-Reset, 1-Active
+
+    //See BLEIO.c for previous interrupt-driven setup of radio.
 
     // setup our ioStream (last once everything is setup)
     cxa_ioStream_init(&usartIn->super.ioStream);
     cxa_ioStream_bind(&usartIn->super.ioStream, ioStream_cb_readByte_SCIB, ioStream_cb_writeBytes_SCIB, (void*)usartIn);
+
+    cxa_runLoop_addTimedEntry(CXA_RUNLOOP_THREADID_DEFAULT, 1000, NULL, runLoopCb_fifoStatusPrint, NULL);
 }
 
 // ******** local function implementations ********
@@ -206,8 +190,6 @@ static bool ioStream_cb_writeBytes_SCIA(void* buffIn, size_t bufferSize_bytesIn,
 
     SCI_writeCharArray(SCIA_BASE, (uint16_t*) buffIn,
                        (uint16_t) bufferSize_bytesIn);
-//	SCI_writeCharArray(uint32_t base, const uint16_t * const array,
-//	                   uint16_t length);
 
 	return true;
 }
@@ -231,6 +213,7 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte_SCIB(uint8_t *const byteOu
     else
     {
         *byteOut = ((uint8_t) SCI_readCharNonBlocking(SCIB_BASE));
+        cxa_logger_stepDebug_msg("r 0x%02X", *byteOut);
         retVal = CXA_IOSTREAM_READSTAT_GOTDATA;
     }
 
@@ -242,64 +225,93 @@ static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn,
 {
     cxa_tiC2K_usart_t* usartIn = (cxa_tiC2K_usart_t*)userVarIn;
     cxa_assert(usartIn);
-
     // TODO: try to write the bytes in the buffIn buffer to the serial port
     // return true if successful
     // return false on failure
 
-    SCI_writeCharArray(SCIB_BASE, (uint16_t*) buffIn,
-                       (uint16_t) bufferSize_bytesIn);
-//  SCI_writeCharArray(uint32_t base, const uint16_t * const array,
-//                     uint16_t length);
+    for( size_t i = 0; i < bufferSize_bytesIn; i++ )
+    {
+        //
+        // Wait until space is available in the transmit FIFO.
+        //
+        while(SCI_getTxFIFOStatus(SCIB_BASE) >= SCI_FIFO_TX14)
+        {
+        }
 
+        //
+        // Send a char.
+        //
+        HWREGH(SCIB_BASE + SCI_O_TXBUF) = ((uint8_t*)buffIn)[i];
+    }
     return true;
 }
 
+////
+//// sciaTxISR - Disable the TXFF interrupt and print message asking
+////             for two characters.
+////
 //__interrupt void
-//sciaTxISR(void) // Write
+//scibTxISR(void)
 //{
-//    UINT16 i;
+////    //
+////    // Disable the TXRDY interrupt.
+////    //
+////    SCI_disableInterrupt(SCIA_BASE, SCI_INT_TXFF);
+////
+////    msg = "\r\nEnter two characters: \0";
+////    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 26);
 //
-//    USARTTXByteCNT++;
-//
-//    if(gUSART.dTX.nR != gUSART.dTX.nW)
-//    {
-//        i=0;
-//        do{
-//            SCI_writeCharBlockingFIFO(SCIA_BASE, gUSART.dTX.d.dat16[gUSART.dTX.nR]);
-//            gUSART.dTX.nR++;
-//            gUSART.dTX.nR &= BLE_TX_BUFFER_INDEX_MASK;
-//            i++;
-//        }while((i<16)&&(gUSART.dTX.nR != gUSART.dTX.nW));
-//        //is this necessary??
-//        SCI_enableInterrupt(SCIA_BASE, SCI_INT_TXFF | SCI_INT_RXFF);
-//    }
-//    else
-//    {
-//        SCI_disableInterrupt(SCIA_BASE, SCI_INT_TXFF);
-//    }
-//
+//    //
 //    // Acknowledge the PIE interrupt.
-//    SCI_clearInterruptStatus(SCIA_BASE, SCI_INT_TXFF);
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP10);
+//    //
+//    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXFF); //[SAD] Added, but needed?
+//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
 //}
 //
+////
+//// sciaRxISR - Read two characters from the RXBUF and echo them back.
+////
 //__interrupt void
-//sciaRxISR(void) // Read
+//scibRxISR(void)
 //{
-//    USARTRXByteCNT++;
-//    gUSART.dRX.d.dat16[gUSART.dRX.nW] = SCI_readCharBlockingFIFO(SCIA_BASE);
+////    uint16_t receivedChar1, receivedChar2;
+////
+////    //
+////    // Enable the TXFF interrupt again.
+////    //
+////    SCI_enableInterrupt(SCIA_BASE, SCI_INT_TXFF);
+////
+////    //
+////    // Read two characters from the FIFO.
+////    //
+////    receivedChar1 = SCI_readCharBlockingFIFO(SCIA_BASE);
+////    receivedChar2 = SCI_readCharBlockingFIFO(SCIA_BASE);
+////
+////    //
+////    // Echo back the two characters.
+////    //
+////    msg = "  You sent: \0";
+////    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 13);
+////    SCI_writeCharBlockingFIFO(SCIA_BASE, receivedChar1);
+////    SCI_writeCharBlockingFIFO(SCIA_BASE, receivedChar2);
 //
-//    gUSART.dRX.nW++;
-//    gUSART.dRX.nW &= BLE_RX_BUFFER_INDEX_MASK;
-//    //REDLEDON;
-//    //timers[BLERXCOUNT] = 20;
-//
+//    //
 //    // Clear the SCI RXFF interrupt and acknowledge the PIE interrupt.
 //    //
-//    SCI_enableInterrupt(SCIA_BASE, SCI_INT_RXFF);
 //    SCI_clearInterruptStatus(SCIA_BASE, SCI_INT_RXFF);
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP10);
+//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
 //
-//    //counter++;
+////    counter++;
 //}
+
+
+static void runLoopCb_fifoStatusPrint(void* userVarIn)
+{
+    uint16_t rxStatus = SCI_getRxStatus(SCIB_BASE);
+    cxa_logger_stepDebug_msg("%d  %04X", SCI_getRxFIFOStatus(SCIB_BASE), rxStatus);
+    if( rxStatus & SCI_RXSTATUS_ERROR )
+    {
+        cxa_logger_stepDebug_msg("resetting");
+        SCI_performSoftwareReset(SCIB_BASE);
+    }
+}

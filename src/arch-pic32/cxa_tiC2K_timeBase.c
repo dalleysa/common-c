@@ -4,11 +4,10 @@
  *
  * @author Christopher Armenio
  */
-#include <cxa_timeBase.h>
+#include "system_definitions.h"
 
 
 // ******** includes ********
-#include <Externals.h>
 #include <cxa_assert.h>
 
 
@@ -25,14 +24,9 @@
 
 
 // ******** global function implementations ********
-void cxa_tiC2K_timeBase_init(void)
-{
-}
-
-
 uint32_t cxa_timeBase_getCount_us(void)
 {
-    return cpuTimer1IntCount*1000; // cpuTimer1IntCount is in ms, multiply by 1000 to get microsecond units.
+    return xTaskGetTickCount() / configTICK_RATE_HZ * 1E6;
 }
 
 
