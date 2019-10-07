@@ -16,6 +16,7 @@
 
 #include <cxa_tiC2K_gpio.h>
 #include "Externals.h"
+#include "Defs.h"
 
 
 #define CXA_LOG_LEVEL		CXA_LOG_LEVEL_TRACE
@@ -109,7 +110,7 @@ void cxa_tiC2K_usart_init_HH_BT(cxa_tiC2K_usart_t *const usartIn, const uint32_t
     // Setup CTS_BTRTS Pin
     cxa_tiC2K_gpio_t usartCTSGpio;
     GPIO_setAnalogMode(ctsPinIn, GPIO_ANALOG_DISABLED); //Customized for BT implementation
-    cxa_tiC2K_gpio_init_input(&usartCTSGpio, rxPinConfigIn, rxPinIn, GPIO_CORE_CPU1, GPIO_PIN_TYPE_STD, CXA_GPIO_POLARITY_NONINVERTED);
+    cxa_tiC2K_gpio_init_input(&usartCTSGpio, rxPinConfigIn, rxPinIn, GPIO_CORE_CPU1, GPIO_PIN_TYPE_PULLUP, CXA_GPIO_POLARITY_NONINVERTED);
     GPIO_setQualificationMode(ctsPinIn, GPIO_QUAL_6SAMPLE); //Customised for BT implementation
 
     // Setup RTS_BTCTS Pin //Customized for BT implementation
@@ -223,6 +224,8 @@ static cxa_ioStream_readStatus_t ioStream_cb_readByte_SCIB(uint8_t *const byteOu
 
 static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn, void *const userVarIn)
 {
+    uint32_t CTS_BTRTSPORTDATA;
+    static uint32_t highCount, lowCount;
     cxa_tiC2K_usart_t* usartIn = (cxa_tiC2K_usart_t*)userVarIn;
     cxa_assert(usartIn);
     // TODO: try to write the bytes in the buffIn buffer to the serial port
@@ -235,6 +238,26 @@ static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn,
         // Wait until space is available in the transmit FIFO.
         //
         while(SCI_getTxFIFOStatus(SCIB_BASE) >= SCI_FIFO_TX14)
+        {
+        }
+
+
+        CTS_BTRTSPORTDATA = GPIO_readPortData(GPIO_PORT_H);
+        if(CTS_BTRTSPORTDATA & CTS_BTRTSPORTMASK) //this is pulled hi on dev board
+        {
+            highCount++; //for breakpoint
+            cxa_logger_stepDebug_msg("CTS_RTS High: %d", highCount);
+        }
+        else
+        {
+            lowCount++; //for breakpoint
+            cxa_logger_stepDebug_msg("CTS_RTS Low: %d", highCount);
+        }
+
+        //
+        // Wait until CTS_BTRTS line is low.
+        //
+        while(CTS_BTRTSPORTDATA & CTS_BTRTSPORTMASK)
         {
         }
 
