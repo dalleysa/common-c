@@ -38,10 +38,10 @@ static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn,
 
 static void runLoopCb_fifoStatusPrint(void* userVarIn);
 
-//__interrupt void scibTxISR(void);
-//__interrupt void scibRxISR(void);
+__interrupt void scibTxISR(void);
+__interrupt void scibRxISR(void);
 // ********  local variable declarations *********
-
+uint16_t counter = 0;
 
 // ******** global function implementations ********
 void cxa_tiC2K_usart_init_noHH(cxa_tiC2K_usart_t *const usartIn, const uint32_t baudRate_bpsIn,
@@ -76,7 +76,7 @@ void cxa_tiC2K_usart_init_noHH(cxa_tiC2K_usart_t *const usartIn, const uint32_t 
     SCI_resetChannels(SCIA_BASE);
     SCI_resetRxFIFO(SCIA_BASE);
     SCI_resetTxFIFO(SCIA_BASE);
-    SCI_clearInterruptStatus(SCIA_BASE, SCI_INT_TXFF | SCI_INT_RXFF);
+//    SCI_clearInterruptStatus(SCIA_BASE, SCI_INT_TXFF | SCI_INT_RXFF);
     SCI_enableFIFO(SCIA_BASE);
     SCI_enableModule(SCIA_BASE);
     SCI_performSoftwareReset(SCIA_BASE);
@@ -122,24 +122,51 @@ void cxa_tiC2K_usart_init_HH_BT(cxa_tiC2K_usart_t *const usartIn, const uint32_t
     //RTS_BTCTS
     // None, held low
 
+    //Disable global interrupts
+    DINT;
+
 //    //
 //    // Initialize interrupt controller and vector table.
 //    // SAD:  These functions are called in NomadMainRev3_DL.c at lines 64 & 65
 //    Interrupt_initModule();
 //    Interrupt_initVectorTable();
+//    IER = 0x0000;  //(Not called elsewhere)
+//    IFR = 0x0000;  //(Not called elsewhere)
 
+    // Map the ISR to the wake interrupt.
+    Interrupt_register(INT_SCIB_TX, scibTxISR);
+    Interrupt_register(INT_SCIB_RX, scibRxISR);
+
+    // Initialize SCIB and its FIFO.
     SCI_performSoftwareReset(SCIB_BASE); // SCI_XBASE could be an argument, but SCIA_BASE (only other option) is used for Bluetooth
-//    DEVICE_DELAY_US(10000);
+
+    // Configure SCIB
     SCI_setConfig(SCIB_BASE, DEVICE_LSPCLK_FREQ, baudRate_bpsIn, (SCI_CONFIG_WLEN_8 |
                                                                   SCI_CONFIG_STOP_ONE |
                                                                   SCI_CONFIG_PAR_NONE));
     SCI_resetChannels(SCIB_BASE);
-    SCI_resetRxFIFO(SCIB_BASE);
-    SCI_resetTxFIFO(SCIB_BASE);
-    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXFF | SCI_INT_RXFF);
+//    SCI_resetRxFIFO(SCIB_BASE);
+//    SCI_resetTxFIFO(SCIB_BASE);
+    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXRDY | SCI_INT_RXRDY_BRKDT);
     SCI_enableFIFO(SCIB_BASE);
     SCI_enableModule(SCIB_BASE);
     SCI_performSoftwareReset(SCIB_BASE);
+
+    // Set the transmit FIFO level to 0 and the receive FIFO level to 2.
+    // Enable the TXFF and RXFF interrupts.
+//    SCI_setFIFOInterruptLevel(SCIB_BASE, SCI_FIFO_TX0, SCI_FIFO_RX2);
+    SCI_enableInterrupt(SCIB_BASE, SCI_INT_TXRDY | SCI_INT_RXRDY_BRKDT);
+
+    // Clear the SCI interrupts before enabling them.
+    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXRDY | SCI_INT_RXRDY_BRKDT);
+
+    // Enable the interrupts in the PIE: Group 9 interrupts 1 & 2.
+    Interrupt_enable(INT_SCIB_RX);
+    Interrupt_enable(INT_SCIB_TX);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
+
+    // Enable global interrupts
+    EINT;
 
     // Reset the BGM121
     GPIO_writePin(11U, 0); // 0-Reset, 1-Active
@@ -269,63 +296,56 @@ static bool ioStream_cb_writeBytes_SCIB(void* buffIn, size_t bufferSize_bytesIn,
     return true;
 }
 
-////
-//// sciaTxISR - Disable the TXFF interrupt and print message asking
-////             for two characters.
-////
-//__interrupt void
-//scibTxISR(void)
-//{
-////    //
-////    // Disable the TXRDY interrupt.
-////    //
-////    SCI_disableInterrupt(SCIA_BASE, SCI_INT_TXFF);
-////
-////    msg = "\r\nEnter two characters: \0";
-////    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 26);
+// scibTxISR
+__interrupt void
+scibTxISR(void)
+{
+//    //
+//    // Disable the TXRDY interrupt.
+//    //
+//    SCI_disableInterrupt(SCIA_BASE, SCI_INT_TXRDY);
+//
+//    msg = "\r\nEnter a character: \0";
+//    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 22);
+
+    //
+    // Acknowledge the PIE interrupt.
+    //
+    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXRDY);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
+
+    counter++;
+}
+
+// scibRxISR - Read the character from the RXBUF and echo it back.
+__interrupt void
+scibRxISR(void)
+{
+//    uint16_t receivedChar;
 //
 //    //
-//    // Acknowledge the PIE interrupt.
+//    // Enable the TXRDY interrupt again.
 //    //
-//    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_TXFF); //[SAD] Added, but needed?
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
-//}
-//
-////
-//// sciaRxISR - Read two characters from the RXBUF and echo them back.
-////
-//__interrupt void
-//scibRxISR(void)
-//{
-////    uint16_t receivedChar1, receivedChar2;
-////
-////    //
-////    // Enable the TXFF interrupt again.
-////    //
-////    SCI_enableInterrupt(SCIA_BASE, SCI_INT_TXFF);
-////
-////    //
-////    // Read two characters from the FIFO.
-////    //
-////    receivedChar1 = SCI_readCharBlockingFIFO(SCIA_BASE);
-////    receivedChar2 = SCI_readCharBlockingFIFO(SCIA_BASE);
-////
-////    //
-////    // Echo back the two characters.
-////    //
-////    msg = "  You sent: \0";
-////    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 13);
-////    SCI_writeCharBlockingFIFO(SCIA_BASE, receivedChar1);
-////    SCI_writeCharBlockingFIFO(SCIA_BASE, receivedChar2);
+//    SCI_enableInterrupt(SCIA_BASE, SCI_INT_TXRDY);
 //
 //    //
-//    // Clear the SCI RXFF interrupt and acknowledge the PIE interrupt.
+//    // Read a character from the RXBUF.
 //    //
-//    SCI_clearInterruptStatus(SCIA_BASE, SCI_INT_RXFF);
-//    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
+//    receivedChar = SCI_readCharBlockingNonFIFO(SCIA_BASE);
 //
-////    counter++;
-//}
+//    //
+//    // Echo back the character.
+//    //
+//    msg = "  You sent: \0";
+//    SCI_writeCharArray(SCIA_BASE, (uint16_t*)msg, 13);
+//    SCI_writeCharBlockingNonFIFO(SCIA_BASE, receivedChar);
+
+    //
+    // Acknowledge the PIE interrupt.
+    //
+    SCI_clearInterruptStatus(SCIB_BASE, SCI_INT_RXRDY_BRKDT);
+    Interrupt_clearACKGroup(INTERRUPT_ACK_GROUP9);
+}
 
 
 static void runLoopCb_fifoStatusPrint(void* userVarIn)
