@@ -16,27 +16,41 @@
 
 
 // ******** local macro definitions ********
+#define MAX_NUM_INTERRUPTS		2 //skyler-there are 5 available external interrupts
 
 
 // ******** local type definitions ********
 
 
 // ******** local function prototypes ********
+static void initSystem(void);
+
 static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn);
 static cxa_gpio_direction_t scm_getDirection(cxa_gpio_t *const superIn);
 static void scm_setPolarity(cxa_gpio_t *const superIn, const cxa_gpio_polarity_t polarityIn);
 static cxa_gpio_polarity_t scm_getPolarity(cxa_gpio_t *const superIn);
 static void scm_setValue(cxa_gpio_t *const superIn, const bool valIn);
 static bool scm_getValue(cxa_gpio_t *const superIn);
+static bool scm_enableInterrupt(cxa_gpio_t *const superIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn);
+
+#warning skyler
+// refactor this prototype and the implementation as neeeded
+void handleExtGpioInterrupt(void);
 
 
 // ********  local variable declarations *********
+static bool isSystemInit = false;
+static cxa_array_t gpiosWithInterrupts;
+static cxa_gpio_t* gpiosWithInterrupts_raw[MAX_NUM_INTERRUPTS];
 
 
 // ******** global function implementations ********
 void cxa_tiC2K_gpio_init_input(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t pinConfigIn, const uint32_t pinIn, const GPIO_CoreSelect coreIn, const uint32_t pinTypeIn, const cxa_gpio_polarity_t polarityIn)
 {
 	cxa_assert(gpioIn);
+
+	// make sure our system is initialized
+	if( !isSystemInit ) initSystem();
 
 	// save our references / internal state
 	gpioIn->pinConfig = pinConfigIn;
@@ -47,7 +61,7 @@ void cxa_tiC2K_gpio_init_input(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t pi
 	cxa_logger_init(&gpioIn->logger, "gpio");
 
 	// initialize our super class
-	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, NULL);
+	cxa_gpio_init(&gpioIn->super, scm_setDirection, scm_getDirection, scm_setPolarity, scm_getPolarity, scm_setValue, scm_getValue, scm_enableInterrupt);
 
 	GPIO_setMasterCore(pinIn, coreIn);
     GPIO_setPinConfig(pinConfigIn);
@@ -60,6 +74,9 @@ void cxa_tiC2K_gpio_init_input(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t pi
 void cxa_tiC2K_gpio_init_output(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t pinConfigIn, const uint32_t pinIn, const GPIO_CoreSelect coreIn, const uint32_t pinTypeIn, const cxa_gpio_polarity_t polarityIn, const bool initValIn)
 {
 	cxa_assert(gpioIn);
+
+	// make sure our system is initialized
+	if( !isSystemInit ) initSystem();
 
 	// save our references / internal state
     gpioIn->pinConfig = pinConfigIn;
@@ -97,6 +114,14 @@ void cxa_tiC2K_gpio_init_output(cxa_tiC2K_gpio_t *const gpioIn, const uint32_t p
 
 
 // ******** local function implementations ********
+static void initSystem(void)
+{
+	cxa_array_initStd(&gpiosWithInterrupts, gpiosWithInterrupts_raw);
+
+	isSystemInit = true;
+}
+
+
 static void scm_setDirection(cxa_gpio_t *const superIn, const cxa_gpio_direction_t dirIn)
 {
 	cxa_assert(superIn);
@@ -192,4 +217,67 @@ static bool scm_getValue(cxa_gpio_t *const superIn)
 
 	bool retVal = (gpioIn->dir == CXA_GPIO_DIR_INPUT) ? GPIO_readPin(gpioIn->pin) : gpioIn->lastVal;
 	return (gpioIn->polarity == CXA_GPIO_POLARITY_INVERTED) ? !retVal : retVal;
+}
+
+
+static bool scm_enableInterrupt(cxa_gpio_t *const superIn, cxa_gpio_interruptType_t intTypeIn, cxa_gpio_cb_onInterrupt_t cbIn, void* userVarIn)
+{
+    size_t gpiosWithInterruptsCount;
+    GPIO_ExternalIntNum extIntNum;
+
+	cxa_assert(superIn);
+
+	// get a pointer to our class
+	cxa_tiC2K_gpio_t *const gpioIn = (cxa_tiC2K_gpio_t *const)superIn;
+
+	// save a reference to the gpio
+	cxa_assert(cxa_array_append(&gpiosWithInterrupts, (void*)&gpioIn));
+
+	// determine how many gpios have interrupts
+	gpiosWithInterruptsCount = (gpiosWithInterrupts.insertIndex-1);
+
+	// assign external interrupt
+    #warning are these interrupts claimed elsewhere?)
+	if      (gpiosWithInterruptsCount == 1) extIntNum = GPIO_INT_XINT1;
+	else if (gpiosWithInterruptsCount == 2) extIntNum = GPIO_INT_XINT2;
+	else if (gpiosWithInterruptsCount == 3) extIntNum = GPIO_INT_XINT3;
+	else if (gpiosWithInterruptsCount == 4) extIntNum = GPIO_INT_XINT4;
+	else if (gpiosWithInterruptsCount == 5) extIntNum = GPIO_INT_XINT5;
+	else; //error
+
+	// TODO: enable interrupts for your GPIO here
+	#warning skyler
+	GPIO_setInterruptPin(gpioIn->pin,extIntNum);
+
+	//GPIO_setInterruptType(extIntNum, intType);
+    if      (intTypeIn == CXA_GPIO_INTERRUPTTYPE_RISING_EDGE) GPIO_setInterruptType(extIntNum,GPIO_INT_TYPE_FALLING_EDGE);
+    else if (intTypeIn == CXA_GPIO_INTERRUPTTYPE_FALLING_EDGE) GPIO_setInterruptType(extIntNum,GPIO_INT_TYPE_RISING_EDGE);
+    else if (intTypeIn == CXA_GPIO_INTERRUPTTYPE_ONCHANGE) GPIO_setInterruptType(extIntNum,GPIO_INT_TYPE_BOTH_EDGES);
+    else; //error
+
+	GPIO_enableInterrupt(extIntNum);
+
+	return true;
+}
+
+
+// ******** interrupt handlers ********
+#warning skyler
+void handleExtGpioInterrupt(void)
+{
+	// iterate through your gpios that have enabled interrupts to find the right one
+	cxa_array_iterate(&gpiosWithInterrupts, currGpio, cxa_bgm_gpio_t*)
+	{
+		if( currGpio == NULL ) continue;
+
+		// TODO: test some GPIO flag register to determine _which_ gpio triggered the interrupt
+		#warning skyler
+		if( false )
+		{
+			bool currVal = scm_getValue(&(*currGpio)->super);
+			if( (*currGpio)->cb_interrupt != NULL ) (*currGpio)->cb_interrupt(&(*currGpio)->super,
+															currVal,
+															(*currGpio)->cb_interrupt_userVar);
+		}
+	}
 }

@@ -16,9 +16,18 @@
 #include <cxa_fixedFifo.h>
 #include <cxa_gpio.h>
 #include <gpio.h>
+#include <cxa_tiC2K_gpio.h>
 
 
 // ******** global macro definitions ********
+#ifndef CXA_TIC2K_USART_TX_FIFO_SIZE_BYTES
+#define CXA_TIC2K_USART_TX_FIFO_SIZE_BYTES 32
+#endif
+
+#ifndef CXA_TIC2K_USART_RX_FIFO_SIZE_BYTES
+#define CXA_TIC2K_USART_RX_FIFO_SIZE_BYTES 16
+#endif
+
 
 
 // ******** global type definitions *********
@@ -35,6 +44,17 @@ typedef struct cxa_tiC2K_usart cxa_tiC2K_usart_t;
 struct cxa_tiC2K_usart
 {
 	cxa_usart_t super;
+
+	cxa_fixedFifo_t txFifo;
+	uint8_t txFifo_raw[CXA_TIC2K_USART_TX_FIFO_SIZE_BYTES];
+
+	cxa_fixedFifo_t rxFifo;
+	uint8_t rxFifo_raw[CXA_TIC2K_USART_RX_FIFO_SIZE_BYTES];
+
+	bool rxOverflow;
+
+	uint32_t sciBase;
+	cxa_gpio_t *gpio_cts;
 };
 
 
@@ -47,12 +67,15 @@ struct cxa_tiC2K_usart
  * @param[in] baudRate_bpsIn the desired baud rate, in bits-per-second
  */
 void cxa_tiC2K_usart_init_noHH(cxa_tiC2K_usart_t *const usartIn, const uint32_t baudRate_bpsIn,
-                               const uint32_t txPinConfigIn, const uint32_t txPinIn,
-                               const uint32_t rxPinConfigIn, const uint32_t rxPinIn);
+                               uint32_t sciBaseIn,
+							   const uint32_t txPinConfigIn, const uint32_t txPinIn,
+							   const uint32_t rxPinConfigIn, const uint32_t rxPinIn);
 
-void cxa_tiC2K_usart_init_HH_BT(cxa_tiC2K_usart_t *const usartIn, const uint32_t baudRate_bpsIn,
-                               const uint32_t txPinConfigIn, const uint32_t txPinIn,
-                               const uint32_t rxPinConfigIn, const uint32_t rxPinIn,
-                               const uint32_t ctsPinConfigIn, const uint32_t ctsPinIn);
+
+void cxa_tiC2K_usart_init_HH_CTSonly(cxa_tiC2K_usart_t *const usartIn, const uint32_t baudRate_bpsIn,
+                                     uint32_t sciBaseIn,
+									 const uint32_t txPinConfigIn, const uint32_t txPinIn,
+									 const uint32_t rxPinConfigIn, const uint32_t rxPinIn,
+									 cxa_gpio_t *const gpio_ctsIn);
 
 #endif
