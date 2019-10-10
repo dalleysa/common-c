@@ -266,7 +266,7 @@ static bool scm_enableInterrupt(cxa_gpio_t *const superIn, cxa_gpio_interruptTyp
 void handleExtGpioInterrupt(void)
 {
 	// iterate through your gpios that have enabled interrupts to find the right one
-	cxa_array_iterate(&gpiosWithInterrupts, currGpio, cxa_bgm_gpio_t*)
+	cxa_array_iterate(&gpiosWithInterrupts, currGpio, cxa_gpio_t*)
 	{
 		if( currGpio == NULL ) continue;
 
@@ -274,10 +274,10 @@ void handleExtGpioInterrupt(void)
 		#warning skyler
 		if( false )
 		{
-			bool currVal = scm_getValue(&(*currGpio)->super);
-			if( (*currGpio)->cb_interrupt != NULL ) (*currGpio)->cb_interrupt(&(*currGpio)->super,
+			bool currVal = scm_getValue(*currGpio);
+			if( (*currGpio)->cbs.onInterrupt != NULL ) (*currGpio)->cbs.onInterrupt(*currGpio,
 															currVal,
-															(*currGpio)->cb_interrupt_userVar);
+															(*currGpio)->cbs.userVar);
 		}
 	}
 }

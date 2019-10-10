@@ -323,7 +323,7 @@ static void handleTxCompleteInterrupt(cxa_tiC2K_usart_t *const usartIn)
 // ******** interrupt handlers ********
 __interrupt void sciaTxISR(void)
 {
-	handleTxInterrupt(usartA);
+	handleTxCompleteInterrupt(usartA);
 
 #warning skyler
 	// not sure what all you need to do in terms of clearing flags to mark this interupt as serviced
@@ -349,7 +349,7 @@ __interrupt void sciaRxISR(void)
 
 __interrupt void scibTxISR(void)
 {
-	handleTxInterrupt(usartB);
+	handleTxCompleteInterrupt(usartB);
 
 #warning skyler
 	// not sure what all you need to do in terms of clearing flags to mark this interupt as serviced
